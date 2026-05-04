@@ -31,7 +31,7 @@ Script chạy ẩn dưới system tray. Biểu tượng AHK xuất hiện ở g�
 |---|---|
 | `Volume Up` | Tăng âm lượng (bước Windows mặc định ~2%) |
 | `Volume Down` | Giảm âm lượng |
-| `Volume Mute` | Bật / tắt mute |
+| `Volume Mute` | Bật / tắt mute (dùng `SoundSetMute(-1)`) |
 
 > Các phím này kích hoạt **flyout gốc của Windows 11** đồng thời sync Mixer GUI.
 
@@ -92,7 +92,7 @@ Sau đó `SetTimer(DetectExternalChange, 150)` bắt đầu vòng lặp nền 15
 ### 2. Luồng phím Media (`Volume_Up / Down / Mute`)
 
 ```
-Người dùng nhấn Volume_Up
+Người dùng nhấn Volume_Up / Volume_Down
         │
         ▼
 AHK bắt sự kiện (hook phím)
@@ -103,9 +103,20 @@ AHK bắt sự kiện (hook phím)
         └──▶ SetTimer(ShowCurrentVolume, -60ms)
                   └──▶ Đọc lại SoundGetVolume() sau 60ms
                             └──▶ SyncUI() — cập nhật Mixer nếu đang mở
+
+Người dùng nhấn Volume_Mute  (hoặc Alt + M)
+        │
+        ▼
+SoundSetMute(-1)   ← gọi thẳng Windows Audio API, KHÔNG dùng Send
+        │          ← tránh AHK bắt lại sự kiện → vòng lặp vô hạn
+        └──▶ SetTimer(ShowMuteState, -60ms)
+                  └──▶ SyncUI() — cập nhật icon + label Mixer
 ```
 
 Lý do delay 60ms: Windows cần một chút thời gian để thực sự thay đổi giá trị âm lượng trước khi ta đọc lại bằng `SoundGetVolume()`.
+
+> ⚠️ **Lưu ý quan trọng — Tại sao không dùng `Send "{Volume_Mute}"`:**  
+> Nếu dùng `Send`, AHK sẽ tự kích hoạt lại hotkey `Volume_Mute::` hoặc `!m::` của chính mình, tạo vòng đệ quy → hàng chục hotkey/giây → hộp thoại cảnh báo *"X hotkeys have been received in the last Nms"*. `SoundSetMute(-1)` giao tiếp trực tiếp với Windows Audio, không phát sinh keyboard event.
 
 ---
 
@@ -201,7 +212,7 @@ VolumePro.ahk
 │   ├── GetVolume()           — Đọc SoundGetVolume(), làm tròn
 │   ├── SetVolume(v)          — Ghi + clamp 0–100 + bỏ mute
 │   ├── ChangeVolume(step)    — SetVolume(current + step)
-│   └── ToggleMute()          — Send Volume_Mute + sync sau 60ms
+│   └── ToggleMute()          — SoundSetMute(-1) trực tiếp + sync sau 60ms
 │
 ├── Overlay
 │   ├── ShowOverlay(vol, muted) — Hiện popup góc dưới phải, auto-hide 1.8s
@@ -255,6 +266,7 @@ SetTimer(HideOverlay, -1800)  ; ← 1800ms = 1.8 giây
 
 ## 💡 Ghi chú kỹ thuật
 
+- **`SoundSetMute(-1)`** — Giá trị `-1` nghĩa là toggle (đảo trạng thái hiện tại). Dùng thay cho `Send "{Volume_Mute}"` để tránh AHK tự kích hoạt lại hotkey của mình, gây vòng lặp vô hạn và hộp thoại cảnh báo *"X hotkeys in Nms"*.
 - **`#SingleInstance Force`** — Nếu chạy script lần thứ hai, instance cũ sẽ tự tắt, tránh xung đột.
 - **`+E0x20` (WS_EX_TRANSPARENT)** — Overlay không nhận click chuột, click xuyên qua xuống cửa sổ bên dưới.
 - **`NoActivate`** trong `Show()` — Cửa sổ hiện ra mà không lấy focus, không làm gián đoạn việc đang làm.

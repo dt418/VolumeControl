@@ -31,7 +31,7 @@ The script runs silently in the system tray. The AHK icon appears in the bottom-
 |---|---|
 | `Volume Up` | Increase volume (Windows default step ~2%) |
 | `Volume Down` | Decrease volume |
-| `Volume Mute` | Toggle mute |
+| `Volume Mute` | Toggle mute (via `SoundSetMute(-1)`) |
 
 > These keys trigger the **native Windows 11 volume flyout** and simultaneously sync the Mixer GUI.
 
@@ -92,7 +92,7 @@ Then `SetTimer(DetectExternalChange, 150)` starts the 150ms background polling l
 ### 2. Media Key Flow (`Volume_Up / Down / Mute`)
 
 ```
-User presses Volume_Up
+User presses Volume_Up / Volume_Down
         │
         ▼
 AHK intercepts the key (low-level hook)
@@ -103,9 +103,20 @@ AHK intercepts the key (low-level hook)
         └──▶ SetTimer(ShowCurrentVolume, -60ms)
                   └──▶ Re-reads SoundGetVolume() after 60ms
                             └──▶ SyncUI() — updates Mixer if it's open
+
+User presses Volume_Mute  (or Alt + M)
+        │
+        ▼
+SoundSetMute(-1)   ← calls Windows Audio API directly, NO Send used
+        │          ← prevents AHK from re-triggering its own hotkey → infinite loop
+        └──▶ SetTimer(ShowMuteState, -60ms)
+                  └──▶ SyncUI() — refreshes icon + label in Mixer
 ```
 
 The 60ms delay gives Windows time to actually commit the volume change before we read it back with `SoundGetVolume()`.
+
+> ⚠️ **Why `Send "{Volume_Mute}"` is NOT used:**  
+> Using `Send` causes AHK to re-fire its own `Volume_Mute::` or `!m::` hotkey, creating a recursive loop — dozens of hotkeys per second — triggering the warning dialog *"X hotkeys have been received in the last Nms"*. `SoundSetMute(-1)` talks directly to Windows Audio and generates no keyboard event.
 
 ---
 
@@ -201,7 +212,7 @@ VolumePro.ahk
 │   ├── GetVolume()           — Read SoundGetVolume(), round to integer
 │   ├── SetVolume(v)          — Write + clamp 0–100 + unmute if needed
 │   ├── ChangeVolume(step)    — SetVolume(current + step)
-│   └── ToggleMute()          — Send Volume_Mute + sync after 60ms
+│   └── ToggleMute()          — SoundSetMute(-1) directly + sync after 60ms
 │
 ├── Overlay
 │   ├── ShowOverlay(vol, muted) — Show popup bottom-right, auto-hide after 1.8s
@@ -255,6 +266,7 @@ SetTimer(HideOverlay, -1800)  ; ← 1800ms = 1.8 seconds
 
 ## 💡 Technical Notes
 
+- **`SoundSetMute(-1)`** — The value `-1` means toggle (flip the current state). Used instead of `Send "{Volume_Mute}"` to prevent AHK from re-triggering its own hotkey, which would cause an infinite loop and the warning dialog *"X hotkeys in Nms"*.
 - **`#SingleInstance Force`** — If the script is launched a second time, the previous instance exits automatically to prevent conflicts.
 - **`+E0x20` (WS_EX_TRANSPARENT)** — The overlay ignores mouse clicks, passing them through to whatever window is underneath.
 - **`NoActivate`** in `Show()` — The window appears without stealing focus, so it never interrupts what the user is doing.

@@ -47,7 +47,7 @@ Volume_Down:: {
 }
 
 Volume_Mute:: {
-    Send "{Volume_Mute}"
+    SoundSetMute(-1)
     SetTimer(ShowMuteState, -60)
 }
 
@@ -126,7 +126,7 @@ SetVolume(v) {
 ChangeVolume(step) => SetVolume(GetVolume() + step)
 
 ToggleMute() {
-    Send "{Volume_Mute}"
+    SoundSetMute(-1)   ; -1 = toggle, không dùng Send để tránh vòng lặp hotkey
     SetTimer(() => (ShowCurrentVolume(), SyncUI()), -60)
 }
 
