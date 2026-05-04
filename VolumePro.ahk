@@ -5,6 +5,11 @@
 ; ║   VolumePro v3 — Windows 11 Flyout Style         ║
 ; ╚══════════════════════════════════════════════════╝
 
+; Tự động thêm vào Startup khi chạy lần đầu
+StartupShortcut := A_Startup "\VolumePro.lnk"
+if !FileExist(StartupShortcut)
+    FileCreateShortcut(A_ScriptFullPath, StartupShortcut)
+	
 ; ========= GLOBAL =========
 global mixerGui     := 0
 global mixerSlider  := 0
