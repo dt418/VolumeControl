@@ -50,6 +50,10 @@ The script runs silently in the system tray. The AHK icon appears in the bottom-
 
 > Custom hotkeys show a **dedicated overlay** in the bottom-right corner of the screen.
 
+> 💡 The modifier key (`Alt` by default) is configurable in `VolumePro.ini`. Set `Modifier = Alt | Ctrl | CtrlAlt | WinKey` to change it globally. Hotkeys are dynamically re-registered without restarting the script.
+
+> 🚫 **Blacklist** — hotkeys are automatically suppressed when certain apps are focused (e.g. VS Code, Chrome, Explorer). A short beep signals the block. Configure the list in `VolumePro.ini` under `[Blacklist]`.
+
 ---
 
 ## 🏗️ Architecture & How It Works
@@ -194,6 +198,23 @@ Color updates in real time at three points:
 - When a hotkey is pressed → `ShowOverlay()` + `SyncUI()`
 - When Windows changes volume externally → `DetectExternalChange()` → `SyncUI()`
 
+
+---
+
+### 7. First-run Welcome & Help Window
+
+On the very first launch, VolumePro creates a sentinel file `VolumePro.firstrun` next to the script. When this file is absent, a **Welcome/Help window** is shown automatically after 800ms (giving the overlay time to initialize).
+
+The Help window can be reopened at any time via **tray → ❓ Help / Hotkeys** and contains three sections:
+
+| Section | Contents |
+|---|---|
+| ⌨️ Hotkeys | All custom shortcuts, auto-populated from the active `Modifier` setting |
+| 🖱️ System Tray | Description of every tray menu entry |
+| 🔔 Beep Guide | Meaning of each beep tone (blocked vs limit) |
+
+Two footer buttons are provided: **Edit Config** (opens `VolumePro.ini` in Notepad) and **Got it!** (closes the window). To force the Welcome screen to reappear, delete `VolumePro.firstrun`.
+
 ---
 
 ## 📁 Function Reference
@@ -228,25 +249,67 @@ VolumePro.ahk
 │   ├── DetectExternalChange()— 150ms poll, detect changes from outside
 │   └── UpdateLastState()     — Store lastVolume / lastMuted
 │
+├── Config
+│   ├── LoadConfig()          — Read VolumePro.ini, apply all settings
+│   ├── ValidateConfig()      — Validate all values, auto-reset bad ones, show warnings
+│   ├── WatchConfig()         — 3s timer: auto-reload when .ini file changes
+│   └── RegisterHotkeys()     — Dynamically register hotkeys based on Modifier setting
+│
+├── Help
+│   └── ShowHelp()            — Welcome/Help window (auto on first run, tray on demand)
+│
 └── Helpers
     ├── GetVolumeColor(vol, muted) — Return HEX color per threshold
     ├── GetVolumeIcon(vol, muted)  — Return emoji 🔇🔈🔉🔊
-    └── ApplyWin11Style(hwnd)      — Rounded corners + Mica + Dark mode via DWM API
+    ├── ApplyWin11Style(hwnd)      — Rounded corners + Mica + Dark mode via DWM API
+    ├── BeepBlocked()              — Low beep when hotkey suppressed by blacklist
+    └── BeepLimit()                — High beep when volume hits 0% or 100%
 ```
 
 ---
 
 ## 🔧 Quick Customization
 
-Open the `.ahk` file in any text editor and adjust the following:
+All settings are in `VolumePro.ini` (auto-generated on first run). Edit it — the script reloads changes within 3 seconds.
 
-**Change volume step size:**
-```autohotkey
-!Up::   ChangeVolume(2)   ; ← change 2 to any number
-!Down:: ChangeVolume(-2)
+**Change modifier key:**
+```ini
+[Hotkeys]
+Modifier = Alt          ; Alt | Ctrl | CtrlAlt | WinKey
 ```
 
-**Change color thresholds:**
+**Change volume step size:**
+```ini
+[Hotkeys]
+VolumeStep = 2          ; 1–50
+VolumeStepLarge = 10    ; 1–50, must be > VolumeStep
+```
+
+**Change overlay duration:**
+```ini
+[Hotkeys]
+OverlayDuration = 1800  ; milliseconds (200–10000)
+```
+
+**Add or remove apps from the blacklist:**
+```ini
+[Blacklist]
+Apps = chrome.exe, Code.exe, explorer.exe
+; Hotkeys are suppressed when these apps are focused.
+; A low beep (400 Hz) signals the block.
+```
+
+**Change beep settings:**
+```ini
+[Beep]
+Enabled = true          ; true | false
+BlockedFreq = 400       ; Hz (37–32767)
+BlockedDuration = 80    ; ms (10–2000)
+LimitFreq = 600         ; Hz (37–32767)
+LimitDuration = 60      ; ms (10–2000)
+```
+
+**Change color thresholds (edit `.ahk`):**
 ```autohotkey
 GetVolumeColor(vol, muted) {
     if vol <= 40   ; ← "low" threshold
@@ -255,11 +318,6 @@ GetVolumeColor(vol, muted) {
         return "0078D4"
     return "E05C00"  ; ← "high" color
 }
-```
-
-**Change overlay display duration:**
-```autohotkey
-SetTimer(HideOverlay, -1800)  ; ← 1800ms = 1.8 seconds
 ```
 
 ---

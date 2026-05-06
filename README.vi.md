@@ -50,6 +50,10 @@ Script chạy ẩn dưới system tray. Biểu tượng AHK xuất hiện ở g�
 
 > Các phím tùy chỉnh hiển thị **overlay riêng** ở góc dưới phải màn hình.
 
+> 💡 Phím modifier (`Alt` mặc định) có thể cấu hình trong `VolumePro.ini`. Đặt `Modifier = Alt | Ctrl | CtrlAlt | WinKey` để thay đổi toàn bộ. Hotkey được đăng ký lại động mà không cần restart script.
+
+> 🚫 **Blacklist** — hotkey tự động bị vô hiệu khi các app nhất định đang được focus (VS Code, Chrome, Explorer...). Một tiếng beep ngắn báo hiệu bị chặn. Cấu hình danh sách trong `VolumePro.ini` mục `[Blacklist]`.
+
 ---
 
 ## 🏗️ Kiến trúc & Nguyên lý hoạt động
@@ -194,6 +198,23 @@ Màu được cập nhật realtime tại 3 điểm:
 - Khi nhấn phím hotkey → `ShowOverlay()` + `SyncUI()`
 - Khi Windows thay đổi từ ngoài → `DetectExternalChange()` → `SyncUI()`
 
+
+---
+
+### 7. Màn hình Welcome & Cửa sổ Help
+
+Lần đầu chạy, VolumePro tạo file sentinel `VolumePro.firstrun` cạnh script. Khi file này chưa tồn tại, **cửa sổ Welcome/Help** sẽ tự hiện sau 800ms (chờ overlay khởi tạo xong).
+
+Cửa sổ Help có thể mở lại bất cứ lúc nào qua **tray → ❓ Help / Hotkeys** và gồm 3 section:
+
+| Section | Nội dung |
+|---|---|
+| ⌨️ Hotkeys | Toàn bộ phím tắt, tự đọc từ `Modifier` đang dùng |
+| 🖱️ System Tray | Giải thích từng mục menu tray |
+| 🔔 Beep Guide | Ý nghĩa từng tiếng beep (bị chặn vs chạm giới hạn) |
+
+Hai nút footer: **Edit Config** (mở `VolumePro.ini` trong Notepad) và **Got it!** (đóng cửa sổ). Để hiện lại màn hình Welcome, xóa file `VolumePro.firstrun`.
+
 ---
 
 ## 📁 Cấu trúc hàm
@@ -206,7 +227,7 @@ VolumePro.ahk
 │
 ├── Hotkeys
 │   ├── Volume_Up/Down/Mute   — Phím media, pass-through + sync
-│   └── Alt+*/Scroll/...      — Hotkey tùy chỉnh, gọi ChangeVolume()
+│   └── Alt+*/Scroll/...      — Hotkey tùy chỉnh, dynamic qua RegisterHotkeys()
 │
 ├── Audio Core
 │   ├── GetVolume()           — Đọc SoundGetVolume(), làm tròn
@@ -228,25 +249,67 @@ VolumePro.ahk
 │   ├── DetectExternalChange()— Poll 150ms, phát hiện thay đổi từ ngoài
 │   └── UpdateLastState()     — Lưu lastVolume / lastMuted
 │
+├── Config
+│   ├── LoadConfig()          — Đọc VolumePro.ini, áp dụng toàn bộ cài đặt
+│   ├── ValidateConfig()      — Kiểm tra giá trị, tự reset lỗi, hiện cảnh báo
+│   ├── WatchConfig()         — Timer 3s: tự reload khi file .ini thay đổi
+│   └── RegisterHotkeys()     — Đăng ký hotkey động theo Modifier đang dùng
+│
+├── Help
+│   └── ShowHelp()            — Cửa sổ Welcome/Help (tự động lần đầu, tray khi cần)
+│
 └── Helpers
     ├── GetVolumeColor(vol, muted) — Trả màu HEX theo ngưỡng
     ├── GetVolumeIcon(vol, muted)  — Trả emoji 🔇🔈🔉🔊
-    └── ApplyWin11Style(hwnd)      — Bo góc + Mica + Dark mode qua DWM API
+    ├── ApplyWin11Style(hwnd)      — Bo góc + Mica + Dark mode qua DWM API
+    ├── BeepBlocked()              — Beep thấp khi hotkey bị chặn bởi blacklist
+    └── BeepLimit()                — Beep cao khi âm lượng chạm 0% hoặc 100%
 ```
 
 ---
 
 ## 🔧 Tùy chỉnh nhanh
 
-Mở file `.ahk` bằng bất kỳ text editor nào và chỉnh các giá trị sau:
+Toàn bộ cài đặt nằm trong `VolumePro.ini` (tự tạo ở lần chạy đầu). Chỉnh sửa file này — script tự reload sau 3 giây.
 
-**Thay đổi bước nhảy âm lượng:**
-```autohotkey
-!Up::   ChangeVolume(2)   ; ← đổi 2 thành số khác
-!Down:: ChangeVolume(-2)
+**Thay đổi phím modifier:**
+```ini
+[Hotkeys]
+Modifier = Alt          ; Alt | Ctrl | CtrlAlt | WinKey
 ```
 
-**Thay đổi ngưỡng màu:**
+**Thay đổi bước nhảy âm lượng:**
+```ini
+[Hotkeys]
+VolumeStep = 2          ; 1–50
+VolumeStepLarge = 10    ; 1–50, phải > VolumeStep
+```
+
+**Thay đổi thời gian hiện overlay:**
+```ini
+[Hotkeys]
+OverlayDuration = 1800  ; millisecond (200–10000)
+```
+
+**Thêm hoặc xóa app khỏi blacklist:**
+```ini
+[Blacklist]
+Apps = chrome.exe, Code.exe, explorer.exe
+; Hotkey bị vô hiệu khi các app này đang focus.
+; Tiếng beep thấp (400 Hz) báo hiệu bị chặn.
+```
+
+**Thay đổi cài đặt beep:**
+```ini
+[Beep]
+Enabled = true          ; true | false
+BlockedFreq = 400       ; Hz (37–32767)
+BlockedDuration = 80    ; ms (10–2000)
+LimitFreq = 600         ; Hz (37–32767)
+LimitDuration = 60      ; ms (10–2000)
+```
+
+**Thay đổi ngưỡng màu (sửa `.ahk`):**
 ```autohotkey
 GetVolumeColor(vol, muted) {
     if vol <= 40   ; ← ngưỡng "nhỏ"
@@ -255,11 +318,6 @@ GetVolumeColor(vol, muted) {
         return "0078D4"
     return "E05C00"  ; ← màu "lớn"
 }
-```
-
-**Thay đổi thời gian hiện overlay:**
-```autohotkey
-SetTimer(HideOverlay, -1800)  ; ← 1800ms = 1.8 giây
 ```
 
 ---
