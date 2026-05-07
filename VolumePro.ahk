@@ -728,5 +728,5 @@ CreateDefaultConfig() {
 "LimitFreq = 600`n"
 "LimitDuration = 60`n"
     )
-    FileAppend(defaultIni, configPath)
+    FileAppend(defaultIni, configPath, "UTF-8")
 }
