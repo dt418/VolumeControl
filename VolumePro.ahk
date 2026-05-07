@@ -28,7 +28,7 @@ global lastVolume   := -1
 global lastMuted    := -1
 
 ; ── Config globals ──
-global CFG_Modifier       := "Alt"
+global CFG_Modifier       := "Ctrl"
 global CFG_Step           := 2
 global CFG_StepLarge      := 10
 global CFG_OverlayMs      := 1800
@@ -70,7 +70,7 @@ LoadConfig() {
 
     configLastModified := FileGetTime(configPath)
 
-    CFG_Modifier     := IniRead(configPath, "Hotkeys", "Modifier",        "Alt")
+    CFG_Modifier     := IniRead(configPath, "Hotkeys", "Modifier",        "Ctrl")
     CFG_Step         := Integer(IniRead(configPath, "Hotkeys", "VolumeStep",      "2"))
     CFG_StepLarge    := Integer(IniRead(configPath, "Hotkeys", "VolumeStepLarge", "10"))
     CFG_OverlayMs    := Integer(IniRead(configPath, "Hotkeys", "OverlayDuration", "1800"))
@@ -119,7 +119,7 @@ ValidateConfig() {
     }
     if !modOk {
         errors.Push('Modifier "' CFG_Modifier '" is invalid. Use: Alt | Ctrl | CtrlAlt | WinKey')
-        CFG_Modifier := "Alt"
+        CFG_Modifier := "Ctrl"
     }
 
     if !(CFG_Step >= 1 && CFG_Step <= 50) {
@@ -715,7 +715,8 @@ CreateDefaultConfig() {
 "; VolumePro v3 — Configuration File`n"
 "; Edit this file — the script auto-reloads within 3 seconds.`n`n"
 "[Hotkeys]`n"
-"Modifier = Alt`n"
+"; Valid modifiers: Alt | Ctrl | CtrlAlt | WinKey`n"
+"Modifier = Ctrl`n"
 "VolumeStep = 2`n"
 "VolumeStepLarge = 10`n"
 "OverlayDuration = 1800`n`n"

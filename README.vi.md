@@ -38,19 +38,19 @@ Script chạy ẩn dưới system tray. Biểu tượng AHK xuất hiện ở g�
 ### Phím tắt tùy chỉnh
 | Phím | Hành động |
 |---|---|
-| `Alt + ↑` | Tăng 2% |
-| `Alt + ↓` | Giảm 2% |
-| `Shift + Alt + ↑` | Tăng 10% |
-| `Shift + Alt + ↓` | Giảm 10% |
-| `Alt + Scroll Up` | Tăng 2% |
-| `Alt + Scroll Down` | Giảm 2% |
-| `Alt + M` | Toggle mute |
-| `Alt + V` | Mở / đóng Mixer GUI |
-| `Alt + R` | Reset về 50% |
+| `Ctrl + ↑` | Tăng 2% |
+| `Ctrl + ↓` | Giảm 2% |
+| `Shift + Ctrl + ↑` | Tăng 10% |
+| `Shift + Ctrl + ↓` | Giảm 10% |
+| `Ctrl + Scroll Up` | Tăng 2% |
+| `Ctrl + Scroll Down` | Giảm 2% |
+| `Ctrl + M` | Toggle mute |
+| `Ctrl + V` | Mở / đóng Mixer GUI |
+| `Ctrl + R` | Reset về 50% |
 
 > Các phím tùy chỉnh hiển thị **overlay riêng** ở góc dưới phải màn hình.
 
-> 💡 Phím modifier (`Alt` mặc định) có thể cấu hình trong `VolumePro.ini`. Đặt `Modifier = Alt | Ctrl | CtrlAlt | WinKey` để thay đổi toàn bộ. Hotkey được đăng ký lại động mà không cần restart script.
+> 💡 Phím modifier (`Ctrl` mặc định) có thể cấu hình trong `VolumePro.ini`. Đặt `Modifier = Alt | Ctrl | CtrlAlt | WinKey` để thay đổi toàn bộ. Hotkey được đăng ký lại động mà không cần restart script.
 
 > 🚫 **Blacklist** — hotkey tự động bị vô hiệu khi các app nhất định đang được focus (VS Code, Chrome, Explorer...). Một tiếng beep ngắn báo hiệu bị chặn. Cấu hình danh sách trong `VolumePro.ini` mục `[Blacklist]`.
 
@@ -66,7 +66,7 @@ Script chạy ẩn dưới system tray. Biểu tượng AHK xuất hiện ở g�
 │  │  HOTKEYS    │    │  AUDIO CORE  │   │   TIMER     │ │
 │  │             │───▶│              │   │  150ms poll │ │
 │  │ Media keys  │    │ GetVolume()  │◀──│             │ │
-│  │ Alt+Up/Down │    │ SetVolume()  │   │ DetectExt.  │ │
+│  │ Ctrl+Up/Down │    │ SetVolume()  │   │ DetectExt.  │ │
 │  │ ScrollWheel │    │ ToggleMute() │   │ Change()    │ │
 │  └─────────────┘    └──────┬───────┘   └─────────────┘ │
 │                            │                            │
@@ -108,7 +108,7 @@ AHK bắt sự kiện (hook phím)
                   └──▶ Đọc lại SoundGetVolume() sau 60ms
                             └──▶ SyncUI() — cập nhật Mixer nếu đang mở
 
-Người dùng nhấn Volume_Mute  (hoặc Alt + M)
+Người dùng nhấn Volume_Mute  (hoặc Ctrl + M)
         │
         ▼
 SoundSetMute(-1)   ← gọi thẳng Windows Audio API, KHÔNG dùng Send
@@ -120,14 +120,14 @@ SoundSetMute(-1)   ← gọi thẳng Windows Audio API, KHÔNG dùng Send
 Lý do delay 60ms: Windows cần một chút thời gian để thực sự thay đổi giá trị âm lượng trước khi ta đọc lại bằng `SoundGetVolume()`.
 
 > ⚠️ **Lưu ý quan trọng — Tại sao không dùng `Send "{Volume_Mute}"`:**  
-> Nếu dùng `Send`, AHK sẽ tự kích hoạt lại hotkey `Volume_Mute::` hoặc `!m::` của chính mình, tạo vòng đệ quy → hàng chục hotkey/giây → hộp thoại cảnh báo *"X hotkeys have been received in the last Nms"*. `SoundSetMute(-1)` giao tiếp trực tiếp với Windows Audio, không phát sinh keyboard event.
+> Nếu dùng `Send`, AHK sẽ tự kích hoạt lại hotkey `Volume_Mute::` hoặc `^m::` của chính mình, tạo vòng đệ quy → hàng chục hotkey/giây → hộp thoại cảnh báo *"X hotkeys have been received in the last Nms"*. `SoundSetMute(-1)` giao tiếp trực tiếp với Windows Audio, không phát sinh keyboard event.
 
 ---
 
-### 3. Luồng phím tùy chỉnh (`Alt+Up`, `Alt+ScrollWheel`…)
+### 3. Luồng phím tùy chỉnh (`Ctrl+Up`, `Ctrl+ScrollWheel`…)
 
 ```
-Người dùng nhấn Alt+↑
+Người dùng nhấn Ctrl+↑
         │
         ▼
 ChangeVolume(+2)
@@ -227,7 +227,7 @@ VolumePro.ahk
 │
 ├── Hotkeys
 │   ├── Volume_Up/Down/Mute   — Phím media, pass-through + sync
-│   └── Alt+*/Scroll/...      — Hotkey tùy chỉnh, dynamic qua RegisterHotkeys()
+│   └── Ctrl+*/Scroll/...    — Hotkey tùy chỉnh, dynamic qua RegisterHotkeys()
 │
 ├── Audio Core
 │   ├── GetVolume()           — Đọc SoundGetVolume(), làm tròn
@@ -275,7 +275,7 @@ Toàn bộ cài đặt nằm trong `VolumePro.ini` (tự tạo ở lần chạy 
 **Thay đổi phím modifier:**
 ```ini
 [Hotkeys]
-Modifier = Alt          ; Alt | Ctrl | CtrlAlt | WinKey
+Modifier = Ctrl         ; Alt | Ctrl | CtrlAlt | WinKey
 ```
 
 **Thay đổi bước nhảy âm lượng:**

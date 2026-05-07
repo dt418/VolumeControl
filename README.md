@@ -38,19 +38,19 @@ The script runs silently in the system tray. The AHK icon appears in the bottom-
 ### Custom Hotkeys
 | Key | Action |
 |---|---|
-| `Alt + ↑` | Increase 2% |
-| `Alt + ↓` | Decrease 2% |
-| `Shift + Alt + ↑` | Increase 10% |
-| `Shift + Alt + ↓` | Decrease 10% |
-| `Alt + Scroll Up` | Increase 2% |
-| `Alt + Scroll Down` | Decrease 2% |
-| `Alt + M` | Toggle mute |
-| `Alt + V` | Open / close Mixer GUI |
-| `Alt + R` | Reset to 50% |
+| `Ctrl + ↑` | Increase 2% |
+| `Ctrl + ↓` | Decrease 2% |
+| `Shift + Ctrl + ↑` | Increase 10% |
+| `Shift + Ctrl + ↓` | Decrease 10% |
+| `Ctrl + Scroll Up` | Increase 2% |
+| `Ctrl + Scroll Down` | Decrease 2% |
+| `Ctrl + M` | Toggle mute |
+| `Ctrl + V` | Open / close Mixer GUI |
+| `Ctrl + R` | Reset to 50% |
 
 > Custom hotkeys show a **dedicated overlay** in the bottom-right corner of the screen.
 
-> 💡 The modifier key (`Alt` by default) is configurable in `VolumePro.ini`. Set `Modifier = Alt | Ctrl | CtrlAlt | WinKey` to change it globally. Hotkeys are dynamically re-registered without restarting the script.
+> 💡 The modifier key (`Ctrl` by default) is configurable in `VolumePro.ini`. Set `Modifier = Alt | Ctrl | CtrlAlt | WinKey` to change it globally. Hotkeys are dynamically re-registered without restarting the script.
 
 > 🚫 **Blacklist** — hotkeys are automatically suppressed when certain apps are focused (e.g. VS Code, Chrome, Explorer). A short beep signals the block. Configure the list in `VolumePro.ini` under `[Blacklist]`.
 
@@ -66,7 +66,7 @@ The script runs silently in the system tray. The AHK icon appears in the bottom-
 │  │  HOTKEYS    │    │  AUDIO CORE  │   │   TIMER     │ │
 │  │             │───▶│              │   │  150ms poll │ │
 │  │ Media keys  │    │ GetVolume()  │◀──│             │ │
-│  │ Alt+Up/Down │    │ SetVolume()  │   │ DetectExt.  │ │
+│  │ Ctrl+Up/Down │    │ SetVolume()  │   │ DetectExt.  │ │
 │  │ ScrollWheel │    │ ToggleMute() │   │ Change()    │ │
 │  └─────────────┘    └──────┬───────┘   └─────────────┘ │
 │                            │                            │
@@ -108,7 +108,7 @@ AHK intercepts the key (low-level hook)
                   └──▶ Re-reads SoundGetVolume() after 60ms
                             └──▶ SyncUI() — updates Mixer if it's open
 
-User presses Volume_Mute  (or Alt + M)
+User presses Volume_Mute  (or Ctrl + M)
         │
         ▼
 SoundSetMute(-1)   ← calls Windows Audio API directly, NO Send used
@@ -120,14 +120,14 @@ SoundSetMute(-1)   ← calls Windows Audio API directly, NO Send used
 The 60ms delay gives Windows time to actually commit the volume change before we read it back with `SoundGetVolume()`.
 
 > ⚠️ **Why `Send "{Volume_Mute}"` is NOT used:**  
-> Using `Send` causes AHK to re-fire its own `Volume_Mute::` or `!m::` hotkey, creating a recursive loop — dozens of hotkeys per second — triggering the warning dialog *"X hotkeys have been received in the last Nms"*. `SoundSetMute(-1)` talks directly to Windows Audio and generates no keyboard event.
+> Using `Send` causes AHK to re-fire its own `Volume_Mute::` or `^m::` hotkey, creating a recursive loop — dozens of hotkeys per second — triggering the warning dialog *"X hotkeys have been received in the last Nms"*. `SoundSetMute(-1)` talks directly to Windows Audio and generates no keyboard event.
 
 ---
 
-### 3. Custom Hotkey Flow (`Alt+Up`, `Alt+ScrollWheel`…)
+### 3. Custom Hotkey Flow (`Ctrl+Up`, `Ctrl+ScrollWheel`…)
 
 ```
-User presses Alt+↑
+User presses Ctrl+↑
         │
         ▼
 ChangeVolume(+2)
@@ -227,7 +227,7 @@ VolumePro.ahk
 │
 ├── Hotkeys
 │   ├── Volume_Up/Down/Mute   — Media keys: pass-through + sync
-│   └── Alt+*/Scroll/...      — Custom hotkeys, call ChangeVolume()
+│   └── Ctrl+*/Scroll/...    — Custom hotkeys, call ChangeVolume()
 │
 ├── Audio Core
 │   ├── GetVolume()           — Read SoundGetVolume(), round to integer
@@ -275,7 +275,7 @@ All settings are in `VolumePro.ini` (auto-generated on first run). Edit it — t
 **Change modifier key:**
 ```ini
 [Hotkeys]
-Modifier = Alt          ; Alt | Ctrl | CtrlAlt | WinKey
+Modifier = Ctrl         ; Alt | Ctrl | CtrlAlt | WinKey
 ```
 
 **Change volume step size:**
