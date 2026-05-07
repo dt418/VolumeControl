@@ -118,8 +118,12 @@ ValidateConfig() {
         }
     }
     if !modOk {
-        errors.Push('Modifier "' CFG_Modifier '" is invalid. Use: Alt | Ctrl | CtrlAlt | CapsLock')
+        errors.Push('Modifier "' CFG_Modifier '" is invalid. Use: CtrlAlt | CapsLock | Alt | Ctrl')
         CFG_Modifier := "CtrlAlt"
+    } else {
+        ; Normalize to canonical case for display and lookup
+        canonical := Map("ctrlalt","CtrlAlt", "capslock","CapsLock", "alt","Alt", "ctrl","Ctrl")
+        CFG_Modifier := canonical.Has(StrLower(CFG_Modifier)) ? canonical[StrLower(CFG_Modifier)] : CFG_Modifier
     }
 
     if !(CFG_Step >= 1 && CFG_Step <= 50) {
@@ -334,6 +338,57 @@ ModifierPrefix(mod) {
     }
 }
 
+; ========= RECOMMENDED BLACKLIST =========
+GetRecommendedBlacklist(mod) {
+    switch StrLower(mod) {
+        case "ctrlalt", "capslock":
+            return ""   ; No conflicts — empty is recommended
+        case "alt":
+            ; Alt+↑↓ = move line in code editors
+            return "Code.exe, idea64.exe, webstorm64.exe, phpstorm64.exe, sublime_text.exe, notepad++.exe, cursor.exe"
+        case "ctrl":
+            ; Ctrl+V = paste, Ctrl+Scroll = zoom, Ctrl+R = reload
+            return "chrome.exe, msedge.exe, firefox.exe, brave.exe, opera.exe, vivaldi.exe, Code.exe, idea64.exe, webstorm64.exe, phpstorm64.exe, sublime_text.exe, notepad++.exe, cursor.exe, WindowsTerminal.exe"
+        default:
+            return ""
+    }
+}
+
+ApplyRecommendedBlacklist(*) {
+    global CFG_Modifier, CFG_BlacklistExes, configPath
+    rec := GetRecommendedBlacklist(CFG_Modifier)
+
+    ; Merge: keep existing entries, add recommended ones (no duplicates)
+    merged := Map()
+    for exe in CFG_BlacklistExes
+        if exe != ""
+            merged[exe] := true
+    for part in StrSplit(rec, ",") {
+        exe := StrLower(Trim(part))
+        if exe != ""
+            merged[exe] := true
+    }
+
+    ; Build comma-separated string
+    list := ""
+    for exe in merged {
+        if list != ""
+            list .= ", "
+        list .= exe
+    }
+
+    added := merged.Count - CFG_BlacklistExes.Length
+    IniWrite(list, configPath, "Blacklist", "Apps")
+    LoadConfig()
+    RegisterHotkeys()
+    if added > 0
+        ShowToast("🛡️  " added " app(s) added to blacklist")
+    else if rec = ""
+        ShowToast("🛡️  No blacklist needed for " CFG_Modifier)
+    else
+        ShowToast("🛡️  Blacklist already up to date")
+}
+
 ; ========= TRAY =========
 InitTray() {
     global configPath
@@ -345,6 +400,7 @@ InitTray() {
     A_TrayMenu.Add()
     A_TrayMenu.Add("⚙️  Edit Config",  (*) => Run('notepad.exe "' configPath '"'))
     A_TrayMenu.Add("🔄 Reload Config", (*) => (LoadConfig(), RegisterHotkeys(), ShowToast("⚙️  Config reloaded")))
+    A_TrayMenu.Add("🛡️  Apply Recommended Blacklist", (*) => ApplyRecommendedBlacklist())
     A_TrayMenu.Add()
     A_TrayMenu.Add("❌ Exit",          (*) => ExitApp())
 }
@@ -703,6 +759,7 @@ ShowHelp(*) {
         ["Help / Hotkeys",  "Show this window"],
         ["Edit Config",     "Open VolumePro.ini in Notepad"],
         ["Reload Config",   "Apply config changes immediately"],
+        ["Rec. Blacklist",  "Auto-fill blacklist based on modifier"],
     ]
 
     for row in trayRows {
@@ -784,8 +841,8 @@ CreateDefaultConfig() {
 "VolumeStepLarge = 10`n"
 "OverlayDuration = 1800`n`n"
 "[Blacklist]`n"
-"; CtrlAlt has no shortcut conflicts — blacklist is empty by default.`n"
-"; If you switch to Ctrl, add: chrome.exe, msedge.exe, firefox.exe, Code.exe, WindowsTerminal.exe`n"
+"; CtrlAlt has no conflicts — Apps is empty by default.`n"
+"; Change to Alt or Ctrl? Use tray → 🛡️ Apply Recommended Blacklist.`n"
 "Apps =`n`n"
 "[Beep]`n"
 "Enabled = true`n"

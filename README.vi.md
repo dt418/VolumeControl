@@ -52,7 +52,7 @@ Script chạy ẩn dưới system tray. Biểu tượng AHK xuất hiện ở g�
 
 > 💡 Phím modifier (`Ctrl+Alt` mặc định) có thể cấu hình trong `VolumePro.ini`. Đặt `Modifier = CtrlAlt | CapsLock | Alt | Ctrl` để thay đổi toàn bộ. Hotkey được đăng ký lại động mà không cần restart script.
 
-> 🚫 **Blacklist** — hotkey tự động bị vô hiệu khi các app nhất định đang được focus. `Ctrl+Alt` (mặc định) **không xung đột** với phím tắt nào, nên blacklist mặc định để trống. Nếu đổi sang modifier `Ctrl`, thêm `chrome.exe, msedge.exe, Code.exe, WindowsTerminal.exe` để tránh xung đột với paste/zoom/reload. Cấu hình trong `VolumePro.ini` mục `[Blacklist]`.
+> 🚫 **Blacklist** — hotkey tự động bị vô hiệu khi các app nhất định đang được focus. `Ctrl+Alt` (mặc định) **không xung đột** với phím tắt nào, nên blacklist mặc định để trống. Đổi modifier qua ini, sau đó dùng **tray → 🛡️ Apply Recommended Blacklist** để tự động điền app phù hợp. Hoặc cấu hình thủ công trong `VolumePro.ini` mục `[Blacklist]`.
 
 ---
 
@@ -209,7 +209,8 @@ Cửa sổ Help có thể mở lại bất cứ lúc nào qua **tray → ❓ Hel
 
 | Section | Nội dung |
 |---|---|
-| ⌨️ Hotkeys | Toàn bộ phím tắt, tự đọc từ `Modifier` đang dùng |
+| ⌨️ Hotkeys | Toàn bộ phím tắt, tự đọc từ config (`Modifier`, `VolumeStep`) |
+| ⚠️ Trạng thái | Mức độ xung đột theo modifier + số app trong blacklist (live từ config) |
 | 🖱️ System Tray | Giải thích từng mục menu tray |
 | 🔔 Beep Guide | Ý nghĩa từng tiếng beep (bị chặn vs chạm giới hạn) |
 
@@ -251,9 +252,10 @@ VolumePro.ahk
 │
 ├── Config
 │   ├── LoadConfig()          — Đọc VolumePro.ini, áp dụng toàn bộ cài đặt
-│   ├── ValidateConfig()      — Kiểm tra giá trị, tự reset lỗi, hiện cảnh báo
+│   ├── ValidateConfig()      — Kiểm tra giá trị + phát hiện xung đột theo modifier
 │   ├── WatchConfig()         — Timer 3s: tự reload khi file .ini thay đổi
-│   └── RegisterHotkeys()     — Đăng ký hotkey động theo Modifier đang dùng
+│   ├── RegisterHotkeys()     — Đăng ký hotkey động (hỗ trợ CapsLock & syntax)
+│   └── ApplyRecommendedBlacklist() — Hợp nhất app khuyến nghị vào [Blacklist]
 │
 ├── Help
 │   └── ShowHelp()            — Cửa sổ Welcome/Help (tự động lần đầu, tray khi cần)
@@ -313,12 +315,9 @@ OverlayDuration = 1800  ; millisecond (200–10000)
 **Thêm hoặc xóa app khỏi blacklist:**
 ```ini
 [Blacklist]
-; CtrlAlt (mặc định) không xung đột — để trống.
-; Nếu dùng Ctrl, thêm: chrome.exe, msedge.exe, Code.exe
 Apps = chrome.exe, Code.exe, explorer.exe
-; Hotkey bị vô hiệu khi các app này đang focus.
-; Tiếng beep thấp (400 Hz) báo hiệu bị chặn.
 ```
+> Hoặc dùng **tray → 🛡️ Apply Recommended Blacklist** để tự điền dựa trên modifier hiện tại. App tùy chỉnh được giữ lại khi merge.
 
 **Thay đổi cài đặt beep:**
 ```ini

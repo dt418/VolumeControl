@@ -52,7 +52,7 @@ The script runs silently in the system tray. The AHK icon appears in the bottom-
 
 > 💡 The modifier key (`Ctrl+Alt` by default) is configurable in `VolumePro.ini`. Set `Modifier = CtrlAlt | CapsLock | Alt | Ctrl` to change it globally. Hotkeys are dynamically re-registered without restarting the script.
 
-> 🚫 **Blacklist** — hotkeys are automatically suppressed when certain apps are focused. `Ctrl+Alt` (default) has **no shortcut conflicts**, so the blacklist starts empty. If you switch to `Ctrl` modifier, add `chrome.exe, msedge.exe, Code.exe, WindowsTerminal.exe` to avoid conflicts with paste/zoom/reload. Configure in `VolumePro.ini` under `[Blacklist]`.
+> 🚫 **Blacklist** — hotkeys are automatically suppressed when certain apps are focused. `Ctrl+Alt` (default) has **no shortcut conflicts**, so the blacklist starts empty. Switch modifiers via ini, then use **tray → 🛡️ Apply Recommended Blacklist** to auto-fill the right apps. Or configure manually in `VolumePro.ini` under `[Blacklist]`.
 
 ---
 
@@ -209,7 +209,8 @@ The Help window can be reopened at any time via **tray → ❓ Help / Hotkeys** 
 
 | Section | Contents |
 |---|---|
-| ⌨️ Hotkeys | All custom shortcuts, auto-populated from the active `Modifier` setting |
+| ⌨️ Hotkeys | All custom shortcuts, auto-populated from config (`Modifier`, `VolumeStep`) |
+| ⚠️ Status | Conflict level per modifier + blacklist app count (live from config) |
 | 🖱️ System Tray | Description of every tray menu entry |
 | 🔔 Beep Guide | Meaning of each beep tone (blocked vs limit) |
 
@@ -251,9 +252,10 @@ VolumePro.ahk
 │
 ├── Config
 │   ├── LoadConfig()          — Read VolumePro.ini, apply all settings
-│   ├── ValidateConfig()      — Validate all values, auto-reset bad ones, show warnings
+│   ├── ValidateConfig()      — Validate values + conflict detection per modifier
 │   ├── WatchConfig()         — 3s timer: auto-reload when .ini file changes
-│   └── RegisterHotkeys()     — Dynamically register hotkeys based on Modifier setting
+│   ├── RegisterHotkeys()     — Dynamically bind hotkeys (CapsLock & syntax support)
+│   └── ApplyRecommendedBlacklist() — Merge recommended apps into [Blacklist]
 │
 ├── Help
 │   └── ShowHelp()            — Welcome/Help window (auto on first run, tray on demand)
@@ -313,12 +315,9 @@ OverlayDuration = 1800  ; milliseconds (200–10000)
 **Add or remove apps from the blacklist:**
 ```ini
 [Blacklist]
-; CtrlAlt (default) has no conflicts — leave empty.
-; For Ctrl modifier, add: chrome.exe, msedge.exe, Code.exe
 Apps = chrome.exe, Code.exe, explorer.exe
-; Hotkeys are suppressed when these apps are focused.
-; A low beep (400 Hz) signals the block.
 ```
+> Or use **tray → 🛡️ Apply Recommended Blacklist** to auto-fill based on your current modifier. Custom entries are preserved on merge.
 
 **Change beep settings:**
 ```ini
