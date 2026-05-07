@@ -38,21 +38,21 @@ Script chạy ẩn dưới system tray. Biểu tượng AHK xuất hiện ở g�
 ### Phím tắt tùy chỉnh
 | Phím | Hành động |
 |---|---|
-| `Ctrl + ↑` | Tăng 2% |
-| `Ctrl + ↓` | Giảm 2% |
-| `Shift + Ctrl + ↑` | Tăng 10% |
-| `Shift + Ctrl + ↓` | Giảm 10% |
-| `Ctrl + Scroll Up` | Tăng 2% |
-| `Ctrl + Scroll Down` | Giảm 2% |
-| `Ctrl + M` | Toggle mute |
-| `Ctrl + V` | Mở / đóng Mixer GUI |
-| `Ctrl + R` | Reset về 50% |
+| `Ctrl + Alt + ↑` | Tăng 2% |
+| `Ctrl + Alt + ↓` | Giảm 2% |
+| `Shift + Ctrl + Alt + ↑` | Tăng 10% |
+| `Shift + Ctrl + Alt + ↓` | Giảm 10% |
+| `Ctrl + Alt + Scroll Up` | Tăng 2% |
+| `Ctrl + Alt + Scroll Down` | Giảm 2% |
+| `Ctrl + Alt + M` | Toggle mute |
+| `Ctrl + Alt + V` | Mở / đóng Mixer GUI |
+| `Ctrl + Alt + R` | Reset về 50% |
 
 > Các phím tùy chỉnh hiển thị **overlay riêng** ở góc dưới phải màn hình.
 
-> 💡 Phím modifier (`Ctrl` mặc định) có thể cấu hình trong `VolumePro.ini`. Đặt `Modifier = Alt | Ctrl | CtrlAlt | WinKey` để thay đổi toàn bộ. Hotkey được đăng ký lại động mà không cần restart script.
+> 💡 Phím modifier (`Ctrl+Alt` mặc định) có thể cấu hình trong `VolumePro.ini`. Đặt `Modifier = CtrlAlt | CapsLock | Alt | Ctrl` để thay đổi toàn bộ. Hotkey được đăng ký lại động mà không cần restart script.
 
-> 🚫 **Blacklist** — hotkey tự động bị vô hiệu khi các app nhất định đang được focus (VS Code, Chrome, Explorer...). Một tiếng beep ngắn báo hiệu bị chặn. Cấu hình danh sách trong `VolumePro.ini` mục `[Blacklist]`.
+> 🚫 **Blacklist** — hotkey tự động bị vô hiệu khi các app nhất định đang được focus. `Ctrl+Alt` (mặc định) **không xung đột** với phím tắt nào, nên blacklist mặc định để trống. Nếu đổi sang modifier `Ctrl`, thêm `chrome.exe, msedge.exe, Code.exe, WindowsTerminal.exe` để tránh xung đột với paste/zoom/reload. Cấu hình trong `VolumePro.ini` mục `[Blacklist]`.
 
 ---
 
@@ -66,7 +66,7 @@ Script chạy ẩn dưới system tray. Biểu tượng AHK xuất hiện ở g�
 │  │  HOTKEYS    │    │  AUDIO CORE  │   │   TIMER     │ │
 │  │             │───▶│              │   │  150ms poll │ │
 │  │ Media keys  │    │ GetVolume()  │◀──│             │ │
-│  │ Ctrl+Up/Down │    │ SetVolume()  │   │ DetectExt.  │ │
+│  │ Ctrl+Alt+↑↓ │    │ SetVolume()  │   │ DetectExt.  │ │
 │  │ ScrollWheel │    │ ToggleMute() │   │ Change()    │ │
 │  └─────────────┘    └──────┬───────┘   └─────────────┘ │
 │                            │                            │
@@ -108,7 +108,7 @@ AHK bắt sự kiện (hook phím)
                   └──▶ Đọc lại SoundGetVolume() sau 60ms
                             └──▶ SyncUI() — cập nhật Mixer nếu đang mở
 
-Người dùng nhấn Volume_Mute  (hoặc Ctrl + M)
+Người dùng nhấn Volume_Mute  (hoặc Ctrl+Alt + M)
         │
         ▼
 SoundSetMute(-1)   ← gọi thẳng Windows Audio API, KHÔNG dùng Send
@@ -124,10 +124,10 @@ Lý do delay 60ms: Windows cần một chút thời gian để thực sự thay 
 
 ---
 
-### 3. Luồng phím tùy chỉnh (`Ctrl+Up`, `Ctrl+ScrollWheel`…)
+### 3. Luồng phím tùy chỉnh (`Ctrl+Alt+Up`, `Ctrl+Alt+ScrollWheel`…)
 
 ```
-Người dùng nhấn Ctrl+↑
+Người dùng nhấn Ctrl+Alt+↑
         │
         ▼
 ChangeVolume(+2)
@@ -227,7 +227,7 @@ VolumePro.ahk
 │
 ├── Hotkeys
 │   ├── Volume_Up/Down/Mute   — Phím media, pass-through + sync
-│   └── Ctrl+*/Scroll/...    — Hotkey tùy chỉnh, dynamic qua RegisterHotkeys()
+│   └── Ctrl+Alt+*/Scroll/... — Hotkey tùy chỉnh, dynamic qua RegisterHotkeys()
 │
 ├── Audio Core
 │   ├── GetVolume()           — Đọc SoundGetVolume(), làm tròn
@@ -268,6 +268,25 @@ VolumePro.ahk
 
 ---
 
+## ⚠️ Lựa chọn Modifier & Xung đột đã biết
+
+| Modifier | Phím tắt | Xung đột | Khuyến nghị |
+|---|---|---|---|
+| `CtrlAlt` | `Ctrl+Alt+↑↓/Scroll/M/V/R` | **Không có** | ✅ Mặc định — an toàn nhất |
+| `CapsLock` | `CapsLock+↑↓/Scroll/M/V/R` | **Không có** (CapsLock thành modifier) | ✅ Tốt cho laptop |
+| `Alt` | `Alt+↑↓/Scroll/M/V/R` | Di chuyển dòng (`Alt+↑↓`) trong editor | ⚠️ Blacklist editor |
+| `Ctrl` | `Ctrl+↑↓/Scroll/M/V/R` | Paste (`Ctrl+V`), Zoom (`Ctrl+Scroll`), Reload (`Ctrl+R`) | ⚠️ Blacklist trình duyệt/editor |
+
+**Cách VolumePro bảo vệ bạn:** Khi `ValidateConfig()` phát hiện modifier rủi ro với blacklist trống, nó hiện cảnh báo liệt kê chính xác các phím xung đột và gợi ý cách sửa. Cảnh báo dừng khi bạn thêm app vào blacklist.
+
+**Trường hợp sử dụng:**
+- **CtrlAlt** — Dùng hàng ngày. Không xung đột, hoạt động mọi app.
+- **CapsLock** — CapsLock thành phím modifier. Không xung đột. Phù hợp laptop.
+- **Alt** — OK cho người không code. Developer phải blacklist editor (xung đột di chuyển dòng).
+- **Ctrl** — Chỉ khi blacklist trình duyệt/editor (xung đột Ctrl+V paste).
+
+---
+
 ## 🔧 Tùy chỉnh nhanh
 
 Toàn bộ cài đặt nằm trong `VolumePro.ini` (tự tạo ở lần chạy đầu). Chỉnh sửa file này — script tự reload sau 3 giây.
@@ -275,7 +294,7 @@ Toàn bộ cài đặt nằm trong `VolumePro.ini` (tự tạo ở lần chạy 
 **Thay đổi phím modifier:**
 ```ini
 [Hotkeys]
-Modifier = Ctrl         ; Alt | Ctrl | CtrlAlt | WinKey
+Modifier = CtrlAlt      ; CtrlAlt | CapsLock | Alt | Ctrl
 ```
 
 **Thay đổi bước nhảy âm lượng:**
@@ -294,6 +313,8 @@ OverlayDuration = 1800  ; millisecond (200–10000)
 **Thêm hoặc xóa app khỏi blacklist:**
 ```ini
 [Blacklist]
+; CtrlAlt (mặc định) không xung đột — để trống.
+; Nếu dùng Ctrl, thêm: chrome.exe, msedge.exe, Code.exe
 Apps = chrome.exe, Code.exe, explorer.exe
 ; Hotkey bị vô hiệu khi các app này đang focus.
 ; Tiếng beep thấp (400 Hz) báo hiệu bị chặn.

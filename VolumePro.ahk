@@ -28,7 +28,7 @@ global lastVolume   := -1
 global lastMuted    := -1
 
 ; ── Config globals ──
-global CFG_Modifier       := "Ctrl"
+global CFG_Modifier       := "CtrlAlt"
 global CFG_Step           := 2
 global CFG_StepLarge      := 10
 global CFG_OverlayMs      := 1800
@@ -70,7 +70,7 @@ LoadConfig() {
 
     configLastModified := FileGetTime(configPath)
 
-    CFG_Modifier     := IniRead(configPath, "Hotkeys", "Modifier",        "Ctrl")
+    CFG_Modifier     := IniRead(configPath, "Hotkeys", "Modifier",        "CtrlAlt")
     CFG_Step         := Integer(IniRead(configPath, "Hotkeys", "VolumeStep",      "2"))
     CFG_StepLarge    := Integer(IniRead(configPath, "Hotkeys", "VolumeStepLarge", "10"))
     CFG_OverlayMs    := Integer(IniRead(configPath, "Hotkeys", "OverlayDuration", "1800"))
@@ -109,7 +109,7 @@ ValidateConfig() {
     errors := []
 
     ; ── [Hotkeys] ──
-    validModifiers := ["alt", "ctrl", "ctrlalt", "winkey"]
+    validModifiers := ["ctrlalt", "capslock", "alt", "ctrl"]
     modOk := false
     for m in validModifiers {
         if (StrLower(CFG_Modifier) = m) {
@@ -118,8 +118,8 @@ ValidateConfig() {
         }
     }
     if !modOk {
-        errors.Push('Modifier "' CFG_Modifier '" is invalid. Use: Alt | Ctrl | CtrlAlt | WinKey')
-        CFG_Modifier := "Ctrl"
+        errors.Push('Modifier "' CFG_Modifier '" is invalid. Use: Alt | Ctrl | CtrlAlt | CapsLock')
+        CFG_Modifier := "CtrlAlt"
     }
 
     if !(CFG_Step >= 1 && CFG_Step <= 50) {
@@ -167,6 +167,20 @@ ValidateConfig() {
     for exe in CFG_BlacklistExes {
         if !RegExMatch(exe, "^[\w\-\+\.]+\.exe$")
             errors.Push('Blacklist entry "' exe '" looks invalid (expected: name.exe)')
+    }
+
+    ; ── Conflict detection ──
+    modLow  := StrLower(CFG_Modifier)
+    blEmpty := (CFG_BlacklistExes.Length = 0)
+
+    if (modLow = "ctrl" && blEmpty) {
+        errors.Push("Modifier=Ctrl conflicts — Ctrl+V (paste), Ctrl+Scroll (zoom), Ctrl+R (reload).`n"
+                   . "    Add affected apps to [Blacklist] or switch to CtrlAlt.")
+    }
+
+    if (modLow = "alt" && blEmpty) {
+        errors.Push("Modifier=Alt conflicts — Alt+↑↓ (move line up/down) in code editors and IDEs.`n"
+                   . "    Add affected apps to [Blacklist] or switch to CtrlAlt.")
     }
 
     return errors
@@ -272,17 +286,35 @@ RegisterHotkeys() {
     }
 
     ; ── Register hotkeys ──
-    keys := Map(
-        prefix "Up",       HK_Up,
-        prefix "Down",     HK_Down,
-        "+" prefix "Up",   HK_UpLarge,
-        "+" prefix "Down", HK_DownLarge,
-        prefix "WheelUp",  HK_WheelUp,
-        prefix "WheelDown",HK_WheelDown,
-        prefix "m",        HK_Mute,
-        prefix "v",        HK_Mixer,
-        prefix "r",        HK_Reset,
-    )
+    modLower := StrLower(CFG_Modifier)
+
+    if (modLower = "capslock") {
+        keys := Map(
+            "CapsLock & Up",       HK_Up,
+            "CapsLock & Down",     HK_Down,
+            "CapsLock & +Up",      HK_UpLarge,
+            "CapsLock & +Down",    HK_DownLarge,
+            "CapsLock & WheelUp",  HK_WheelUp,
+            "CapsLock & WheelDown",HK_WheelDown,
+            "CapsLock & m",        HK_Mute,
+            "CapsLock & v",        HK_Mixer,
+            "CapsLock & r",        HK_Reset,
+        )
+        ; Suppress CapsLock toggle when used as modifier
+        SetCapsLockState "AlwaysOff"
+    } else {
+        keys := Map(
+            prefix "Up",       HK_Up,
+            prefix "Down",     HK_Down,
+            "+" prefix "Up",   HK_UpLarge,
+            "+" prefix "Down", HK_DownLarge,
+            prefix "WheelUp",  HK_WheelUp,
+            prefix "WheelDown",HK_WheelDown,
+            prefix "m",        HK_Mute,
+            prefix "v",        HK_Mixer,
+            prefix "r",        HK_Reset,
+        )
+    }
 
     for hk, fn in keys {
         try {
@@ -297,7 +329,7 @@ ModifierPrefix(mod) {
         case "alt":     return "!"
         case "ctrl":    return "^"
         case "ctrlalt": return "^!"
-        case "winkey":  return "#"
+        case "capslock": return "CapsLock & "
         default:        return "!"
     }
 }
@@ -578,7 +610,7 @@ MixerSliderChange(*) {
 
 ; ========= HELP / WELCOME WINDOW =========
 ShowHelp(*) {
-    global helpGui, CFG_Modifier
+    global helpGui, CFG_Modifier, CFG_Step, CFG_StepLarge, CFG_BlacklistExes
 
     ; Close if already open
     if IsObject(helpGui) {
@@ -588,14 +620,27 @@ ShowHelp(*) {
     mod := CFG_Modifier
 
     ; Map modifier display name
-    modDisplay := Map("Alt","Alt", "Ctrl","Ctrl", "CtrlAlt","Ctrl+Alt", "WinKey","Win")
+    modDisplay := Map("Alt","Alt", "Ctrl","Ctrl", "CtrlAlt","Ctrl+Alt", "CapsLock","CapsLock")
     modLabel   := modDisplay.Has(mod) ? modDisplay[mod] : mod
+
+    ; Conflict info per modifier
+    conflictMap := Map(
+        "CtrlAlt",  "✅ No known conflicts",
+        "CapsLock", "✅ No known conflicts",
+        "Alt",      "⚠️  Alt+↑↓ conflicts with move-line in code editors",
+        "Ctrl",     "⚠️  Ctrl+V (paste), Ctrl+Scroll (zoom), Ctrl+R (reload)",
+    )
+    conflictNote := conflictMap.Has(mod) ? conflictMap[mod] : ""
+
+    ; Blacklist info
+    blCount := CFG_BlacklistExes.Length
+    blInfo  := blCount > 0 ? "🛡️  Blacklist: " blCount " app(s)" : "🛡️  Blacklist: empty"
 
     helpGui := Gui("-Caption +AlwaysOnTop +ToolWindow")
     helpGui.BackColor := "1E1E1E"
     helpGui.SetFont("s10", "Segoe UI Variable Text")
 
-    W := 460   ; window width
+    W := 480   ; window width
 
     ; ── Accent bar top ──
     helpGui.AddProgress("x0 y0 w" W " h3 c0078D4 Background0078D4", 100)
@@ -626,11 +671,22 @@ ShowHelp(*) {
 
     y := 104
     for row in rows {
-        keyCol := helpGui.AddText("x28 y" y " w170 h18 cCCCCCC", row[1])
+        keyCol := helpGui.AddText("x28 y" y " w180 h18 cCCCCCC", row[1])
         keyCol.SetFont("s9", "Segoe UI Variable Text")
-        helpGui.AddText("x200 y" y " w" (W-220) " h18 c888888", row[2])
+        helpGui.AddText("x210 y" y " w" (W-230) " h18 c888888", row[2])
         y += 20
     }
+
+    ; ── Conflict & blacklist status ──
+    if conflictNote != "" {
+        conflictColor := InStr(conflictNote, "✅") ? "27AE60" : InStr(conflictNote, "⛔") ? "E05C00" : "E0A800"
+        cLine := helpGui.AddText("x28 y" y " w" (W-48) " h16 c" conflictColor, conflictNote)
+        cLine.SetFont("s8", "Segoe UI Variable Text")
+        y += 18
+    }
+    blLine := helpGui.AddText("x28 y" y " w" (W-48) " h16 c888888", blInfo)
+    blLine.SetFont("s8", "Segoe UI Variable Text")
+    y += 20
 
     ; ── Divider ──
     helpGui.AddText("x20 y" (y+4) " w" (W-40) " h1 Background2D2D2D", "")
@@ -715,13 +771,22 @@ CreateDefaultConfig() {
 "; VolumePro v3 — Configuration File`n"
 "; Edit this file — the script auto-reloads within 3 seconds.`n`n"
 "[Hotkeys]`n"
-"; Valid modifiers: Alt | Ctrl | CtrlAlt | WinKey`n"
-"Modifier = Ctrl`n"
+"; Valid modifiers (ordered by conflict risk): CtrlAlt | CapsLock | Alt | Ctrl`n"
+";`n"
+"; CtrlAlt (default) — No conflicts. Recommended.`n"
+"; CapsLock           — No conflicts. Your CapsLock becomes a modifier key.`n"
+"; Alt                — Conflicts: Alt+↑↓ (move line up/down) in code editors and IDEs.`n"
+";                     → Blacklist Code.exe, idea64.exe, sublime_text.exe, etc.`n"
+"; Ctrl               — Conflicts: Ctrl+Scroll (zoom), Ctrl+V (paste), Ctrl+R (reload).`n"
+";                     → Blacklist browsers, editors, terminals.`n"
+"Modifier = CtrlAlt`n"
 "VolumeStep = 2`n"
 "VolumeStepLarge = 10`n"
 "OverlayDuration = 1800`n`n"
 "[Blacklist]`n"
-"Apps = msedge.exe, firefox.exe, brave.exe, opera.exe, vivaldi.exe, Code.exe, idea64.exe, webstorm64.exe, phpstorm64.exe, sublime_text.exe, notepad++.exe, cursor.exe, WindowsTerminal.exe, pwsh.exe, cmd.exe, mintty.exe, explorer.exe, slack.exe, discord.exe, figma.exe`n`n"
+"; CtrlAlt has no shortcut conflicts — blacklist is empty by default.`n"
+"; If you switch to Ctrl, add: chrome.exe, msedge.exe, firefox.exe, Code.exe, WindowsTerminal.exe`n"
+"Apps =`n`n"
 "[Beep]`n"
 "Enabled = true`n"
 "BlockedFreq = 400`n"

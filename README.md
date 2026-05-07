@@ -38,21 +38,21 @@ The script runs silently in the system tray. The AHK icon appears in the bottom-
 ### Custom Hotkeys
 | Key | Action |
 |---|---|
-| `Ctrl + ↑` | Increase 2% |
-| `Ctrl + ↓` | Decrease 2% |
-| `Shift + Ctrl + ↑` | Increase 10% |
-| `Shift + Ctrl + ↓` | Decrease 10% |
-| `Ctrl + Scroll Up` | Increase 2% |
-| `Ctrl + Scroll Down` | Decrease 2% |
-| `Ctrl + M` | Toggle mute |
-| `Ctrl + V` | Open / close Mixer GUI |
-| `Ctrl + R` | Reset to 50% |
+| `Ctrl + Alt + ↑` | Increase 2% |
+| `Ctrl + Alt + ↓` | Decrease 2% |
+| `Shift + Ctrl + Alt + ↑` | Increase 10% |
+| `Shift + Ctrl + Alt + ↓` | Decrease 10% |
+| `Ctrl + Alt + Scroll Up` | Increase 2% |
+| `Ctrl + Alt + Scroll Down` | Decrease 2% |
+| `Ctrl + Alt + M` | Toggle mute |
+| `Ctrl + Alt + V` | Open / close Mixer GUI |
+| `Ctrl + Alt + R` | Reset to 50% |
 
 > Custom hotkeys show a **dedicated overlay** in the bottom-right corner of the screen.
 
-> 💡 The modifier key (`Ctrl` by default) is configurable in `VolumePro.ini`. Set `Modifier = Alt | Ctrl | CtrlAlt | WinKey` to change it globally. Hotkeys are dynamically re-registered without restarting the script.
+> 💡 The modifier key (`Ctrl+Alt` by default) is configurable in `VolumePro.ini`. Set `Modifier = CtrlAlt | CapsLock | Alt | Ctrl` to change it globally. Hotkeys are dynamically re-registered without restarting the script.
 
-> 🚫 **Blacklist** — hotkeys are automatically suppressed when certain apps are focused (e.g. VS Code, Chrome, Explorer). A short beep signals the block. Configure the list in `VolumePro.ini` under `[Blacklist]`.
+> 🚫 **Blacklist** — hotkeys are automatically suppressed when certain apps are focused. `Ctrl+Alt` (default) has **no shortcut conflicts**, so the blacklist starts empty. If you switch to `Ctrl` modifier, add `chrome.exe, msedge.exe, Code.exe, WindowsTerminal.exe` to avoid conflicts with paste/zoom/reload. Configure in `VolumePro.ini` under `[Blacklist]`.
 
 ---
 
@@ -66,7 +66,7 @@ The script runs silently in the system tray. The AHK icon appears in the bottom-
 │  │  HOTKEYS    │    │  AUDIO CORE  │   │   TIMER     │ │
 │  │             │───▶│              │   │  150ms poll │ │
 │  │ Media keys  │    │ GetVolume()  │◀──│             │ │
-│  │ Ctrl+Up/Down │    │ SetVolume()  │   │ DetectExt.  │ │
+│  │ Ctrl+Alt+↑↓ │    │ SetVolume()  │   │ DetectExt.  │ │
 │  │ ScrollWheel │    │ ToggleMute() │   │ Change()    │ │
 │  └─────────────┘    └──────┬───────┘   └─────────────┘ │
 │                            │                            │
@@ -108,7 +108,7 @@ AHK intercepts the key (low-level hook)
                   └──▶ Re-reads SoundGetVolume() after 60ms
                             └──▶ SyncUI() — updates Mixer if it's open
 
-User presses Volume_Mute  (or Ctrl + M)
+User presses Volume_Mute  (or Ctrl+Alt + M)
         │
         ▼
 SoundSetMute(-1)   ← calls Windows Audio API directly, NO Send used
@@ -124,10 +124,10 @@ The 60ms delay gives Windows time to actually commit the volume change before we
 
 ---
 
-### 3. Custom Hotkey Flow (`Ctrl+Up`, `Ctrl+ScrollWheel`…)
+### 3. Custom Hotkey Flow (`Ctrl+Alt+Up`, `Ctrl+Alt+ScrollWheel`…)
 
 ```
-User presses Ctrl+↑
+User presses Ctrl+Alt+↑
         │
         ▼
 ChangeVolume(+2)
@@ -227,7 +227,7 @@ VolumePro.ahk
 │
 ├── Hotkeys
 │   ├── Volume_Up/Down/Mute   — Media keys: pass-through + sync
-│   └── Ctrl+*/Scroll/...    — Custom hotkeys, call ChangeVolume()
+│   └── Ctrl+Alt+*/Scroll/... — Custom hotkeys, call ChangeVolume()
 │
 ├── Audio Core
 │   ├── GetVolume()           — Read SoundGetVolume(), round to integer
@@ -268,6 +268,25 @@ VolumePro.ahk
 
 ---
 
+## ⚠️ Modifier Choice & Known Conflicts
+
+| Modifier | Hotkeys | Conflicts | Recommendation |
+|---|---|---|---|
+| `CtrlAlt` | `Ctrl+Alt+↑↓/Scroll/M/V/R` | **None** | ✅ Default — safest |
+| `CapsLock` | `CapsLock+↑↓/Scroll/M/V/R` | **None** (CapsLock becomes modifier) | ✅ Best for laptops |
+| `Alt` | `Alt+↑↓/Scroll/M/V/R` | Move line (`Alt+↑↓`) in code editors | ⚠️ Blacklist editors |
+| `Ctrl` | `Ctrl+↑↓/Scroll/M/V/R` | Paste (`Ctrl+V`), Zoom (`Ctrl+Scroll`), Reload (`Ctrl+R`) | ⚠️ Blacklist browsers/editors |
+
+**How VolumePro protects you:** When `ValidateConfig()` detects a risky modifier with an empty blacklist, it shows a warning dialog listing the exact conflicting shortcuts and suggests fixes. The warning stops once you add apps to the blacklist.
+
+**Use cases:**
+- **CtrlAlt** — Daily driver. Zero conflicts, works everywhere.
+- **CapsLock** — Turns CapsLock into a modifier. No conflicts. Great for laptops.
+- **Alt** — OK for non-developers. Devs must blacklist code editors (move-line conflict).
+- **Ctrl** — Only with blacklist for browsers/editors (Ctrl+V paste conflict).
+
+---
+
 ## 🔧 Quick Customization
 
 All settings are in `VolumePro.ini` (auto-generated on first run). Edit it — the script reloads changes within 3 seconds.
@@ -275,7 +294,7 @@ All settings are in `VolumePro.ini` (auto-generated on first run). Edit it — t
 **Change modifier key:**
 ```ini
 [Hotkeys]
-Modifier = Ctrl         ; Alt | Ctrl | CtrlAlt | WinKey
+Modifier = CtrlAlt      ; CtrlAlt | CapsLock | Alt | Ctrl
 ```
 
 **Change volume step size:**
@@ -294,6 +313,8 @@ OverlayDuration = 1800  ; milliseconds (200–10000)
 **Add or remove apps from the blacklist:**
 ```ini
 [Blacklist]
+; CtrlAlt (default) has no conflicts — leave empty.
+; For Ctrl modifier, add: chrome.exe, msedge.exe, Code.exe
 Apps = chrome.exe, Code.exe, explorer.exe
 ; Hotkeys are suppressed when these apps are focused.
 ; A low beep (400 Hz) signals the block.
