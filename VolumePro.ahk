@@ -1,4 +1,4 @@
-#Requires AutoHotkey v2.0
+﻿#Requires AutoHotkey v2.0
 #SingleInstance Force
 
 ; ╔══════════════════════════════════════════════════╗
@@ -6,7 +6,7 @@
 ; ║   Config-driven blacklist + smart beep           ║
 ; ╚══════════════════════════════════════════════════╝
 
-; ── Tự động thêm vào Startup khi chạy lần đầu ──
+; ── Auto-add to Startup on first run ──
 StartupShortcut := A_Startup "\VolumePro.lnk"
 if !FileExist(StartupShortcut)
     FileCreateShortcut(A_ScriptFullPath, StartupShortcut)
@@ -50,11 +50,11 @@ RegisterHotkeys()
 SetTimer(DetectExternalChange, 150)
 SetTimer(WatchConfig, 3000)
 
-; ── Hiện Welcome nếu lần đầu chạy ──
+; ── Show Welcome on first run ──
 firstRunFlag := A_ScriptDir "\VolumePro.firstrun"
 if !FileExist(firstRunFlag) {
     FileAppend("done", firstRunFlag)
-    SetTimer(ShowHelp, -800)   ; delay nhỏ để overlay init xong
+    SetTimer(ShowHelp, -800)   ; short delay so overlay finishes init
 }
 
 ; ========= CONFIG LOADER =========
@@ -172,7 +172,7 @@ ValidateConfig() {
     return errors
 }
 
-; ── Theo dõi file config, tự reload khi thay đổi ──
+; ── Watch config file, auto-reload on change ──
 WatchConfig() {
     global configPath, configLastModified
     if !FileExist(configPath)
@@ -180,7 +180,7 @@ WatchConfig() {
     newMod := FileGetTime(configPath)
     if (newMod != configLastModified) {
         configLastModified := newMod
-        LoadConfig()      ; ValidateConfig() được gọi bên trong LoadConfig()
+        LoadConfig()      ; ValidateConfig() is called inside LoadConfig()
         RegisterHotkeys()
         ShowToast("⚙️  Config reloaded")
     }
@@ -195,14 +195,14 @@ RegisterHotkeys() {
     stepVal      := CFG_Step
     stepLargeVal := CFG_StepLarge
 
-    ; Xoá các hotkey đã đăng ký trước đó
+    ; Clear previously registered hotkeys
     static registered := []
     for hk in registered {
         try Hotkey(hk, "Off")
     }
     registered := []
 
-    ; ── Hàm kiểm tra blacklist (closure) ──
+    ; ── Blacklist check function (closure) ──
     IsBlocked(*) {
         try
             exe := StrLower(WinGetProcessName("A"))
@@ -271,7 +271,7 @@ RegisterHotkeys() {
             SetVolume(50)
     }
 
-    ; ── Đăng ký hotkey ──
+    ; ── Register hotkeys ──
     keys := Map(
         prefix "Up",       HK_Up,
         prefix "Down",     HK_Down,
@@ -318,7 +318,7 @@ InitTray() {
 }
 
 ; ========= MEDIA KEYS =========
-; Phím media — Windows tự trigger flyout gốc, ta chỉ sync UI
+; Media keys — Windows triggers native flyout, we only sync UI
 Volume_Up:: {
     Send "{Volume_Up}"
     SetTimer(ShowCurrentVolume, -60)
@@ -378,7 +378,7 @@ ShowOverlay(vol, muted := false) {
     SetTimer(HideOverlay, -CFG_OverlayMs)
 }
 
-; ── Toast nhỏ cho thông báo hệ thống ──
+; ── Toast for system notifications ──
 ShowToast(msg) {
     global overlayGui, overlayText, overlayBar, CFG_OverlayMs
     overlayText.Text := msg
@@ -412,7 +412,7 @@ SetVolume(v) {
     prev := GetVolume()
     v    := Max(0, Min(100, v))
 
-    ; Beep khi đang ở giới hạn và vẫn tiếp tục nhấn
+    ; Beep when already at limit and still pressing
     if (v = 0 && prev = 0) || (v = 100 && prev = 100)
         BeepLimit()
 
@@ -580,7 +580,7 @@ MixerSliderChange(*) {
 ShowHelp(*) {
     global helpGui, CFG_Modifier
 
-    ; Đóng nếu đang mở
+    ; Close if already open
     if IsObject(helpGui) {
         try helpGui.Destroy()
     }
@@ -713,14 +713,14 @@ CreateDefaultConfig() {
     defaultIni :=
     (
 "; VolumePro v3 — Configuration File`n"
-"; Chỉnh sửa file này, script tự reload sau 3 giây.`n`n"
+"; Edit this file — the script auto-reloads within 3 seconds.`n`n"
 "[Hotkeys]`n"
 "Modifier = Alt`n"
 "VolumeStep = 2`n"
 "VolumeStepLarge = 10`n"
 "OverlayDuration = 1800`n`n"
 "[Blacklist]`n"
-"Apps = chrome.exe, msedge.exe, firefox.exe, brave.exe, opera.exe, vivaldi.exe, Code.exe, idea64.exe, webstorm64.exe, phpstorm64.exe, sublime_text.exe, notepad++.exe, cursor.exe, WindowsTerminal.exe, pwsh.exe, cmd.exe, mintty.exe, explorer.exe, slack.exe, discord.exe, figma.exe`n`n"
+"Apps = msedge.exe, firefox.exe, brave.exe, opera.exe, vivaldi.exe, Code.exe, idea64.exe, webstorm64.exe, phpstorm64.exe, sublime_text.exe, notepad++.exe, cursor.exe, WindowsTerminal.exe, pwsh.exe, cmd.exe, mintty.exe, explorer.exe, slack.exe, discord.exe, figma.exe`n`n"
 "[Beep]`n"
 "Enabled = true`n"
 "BlockedFreq = 400`n"
